@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "Orphanage": {
+      "title": "Orphanage",
+      "description": "An orphanage institution in Cameroon",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "region": { "type": "string", "enum": ["Adamawa", "Central", "East", "Far North", "Littoral", "North", "North-West", "South", "South-West", "West"] },
+        "city": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "contactPhone": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "capacity": { "type": "integer" },
+        "ageGroups": { "type": "string" },
+        "description": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "submittedByEmail": { "type": "string" }
+      },
+      "required": ["name", "region", "city", "latitude", "longitude", "status"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "User with administrative privileges",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback, suggestions or bug reports",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "type": { "type": "string", "enum": ["suggestion", "bug", "other"] },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "resolved": { "type": "boolean" }
+      },
+      "required": ["type", "message", "createdAt", "resolved"]
+    }
+  },
+  "firestore": {
+    "orphanages": {
+      "schema": "Orphanage",
+      "description": "Collection of all orphanages"
+    },
+    "admins": {
+      "schema": "Admin",
+      "description": "Collection of admin user IDs"
+    },
+    "feedback": {
+      "schema": "Feedback",
+      "description": "Collection of user feedback"
+    }
+  }
+}

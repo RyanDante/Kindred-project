@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'tsezamanji123@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Validation for Orphanage entity
+    function isValidOrphanage(data) {
+      return data.keys().hasAll(['name', 'region', 'city', 'latitude', 'longitude', 'status', 'createdAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() < 200
+        && data.region is string && data.region.size() > 0
+        && data.city is string && data.city.size() > 0
+        && data.latitude is number && data.latitude >= -5 && data.latitude <= 15
+        && data.longitude is number && data.longitude >= 8 && data.longitude <= 17
+        && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected')
+        && data.keys().size() >= 7 && data.keys().size() <= 16;
+    }
+
+    // Admins collection: Only users can read their own status
+    match /admins/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false; // Only manageable via console
+    }
+
+    // Orphanages collection
+    match /orphanages/{orphanageId} {
+      // List/Get: Approved are public. Admin sees all. Creator sees their own.
+      allow list: if (resource.data.status == 'approved' || isAdmin());
+      allow get: if (resource.data.status == 'approved' || isAdmin() || (isSignedIn() && resource.data.submittedByEmail == request.auth.token.email));
+
+      // Create: Verified users can submit pending orphanages
+      allow create: if isVerified() 
+        && isValidId(orphanageId)
+        && isValidOrphanage(incoming())
+        && (
+          isAdmin() || (
+            incoming().status == 'pending'
+            && (incoming().get('submittedByEmail', null) == null || incoming().submittedByEmail == request.auth.token.email)
+          )
+        )
+        && incoming().createdAt == request.time;
+
+      // Update: Admins can update anything.
+      allow update: if (isAdmin() && isValidOrphanage(incoming()) && incoming().createdAt == existing().createdAt)
+        || (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']));
+
+      // Delete: Admin only
+      allow delete: if isAdmin();
+    }
+
+    // Feedback collection
+    match /feedback/{feedbackId} {
+      allow create: if isSignedIn() 
+        && incoming().keys().hasAll(['type', 'message', 'createdAt', 'resolved'])
+        && (incoming().type == 'suggestion' || incoming().type == 'bug' || incoming().type == 'other')
+        && incoming().message is string && incoming().message.size() > 0
+        && incoming().createdAt == request.time
+        && incoming().resolved == false;
+      allow read, list: if isAdmin();
+      allow update: if isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['resolved']);
+      allow delete: if isAdmin();
+    }
+
+    // Internal test connection point
+    match /test/connection {
+      allow get: if true;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Kindred",
+  "description": "A centralized directory for orphanages in Cameroon, helping families, NGOs, and volunteers find and support institutions across all 10 regions.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": []
+}
